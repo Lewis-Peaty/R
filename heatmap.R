@@ -7,30 +7,30 @@ require(plotly) # Hipster plot library
 
 setwd("H:/Documents/Software/R") # Change to wherever this script & data is
 
-jdata <- read.csv("JeremyData.csv", sep=",") 
+jdata <- read.csv("JData.csv", sep=",") 
 
 cuts <- 100 # Number of bins - 1
 
-# Bin the MinCurrent and FixedCurrent
-jdata$cMinCurrent <- cut(jdata$MinCurrent, cuts, labels = FALSE)
-jdata$cFixedCurrent <- cut(jdata$FixedCurrent, cuts, labels = FALSE)
+# Bin the Var1 and Var2
+jdata$cVar1 <- cut(jdata$Var1, cuts, labels = FALSE)
+jdata$cVar2 <- cut(jdata$Var2, cuts, labels = FALSE)
 
 # Un-normalise bin labels 
-jdata$cFixedCurrent <- jdata$cFixedCurrent / cuts * max(jdata$FixedCurrent)
-jdata$cMinCurrent <- jdata$cMinCurrent /cuts * max(jdata$MinCurrent) 
+jdata$cVar2 <- jdata$cVar2 / cuts * max(jdata$Var2)
+jdata$cVar1 <- jdata$cVar1 /cuts * max(jdata$Var1) 
 
-# Compute mean Fitness for-each bin
-jdata2 <- aggregate(Fitness ~ cMinCurrent + cFixedCurrent, jdata, mean )
+# Compute mean Var3 for-each bin
+jdata2 <- aggregate(Var3 ~ cVar1 + cVar2, jdata, mean )
 
 # Crosstab view of the previous line (unused)
-#plotme <- xtabs(formula = jdata2$Fitness ~ jdata2$cFixedCurrent + jdata2$cMinCurrent)
+#plotme <- xtabs(formula = jdata2$Var3 ~ jdata2$cVar2 + jdata2$cVar1)
 
 
 # Axis titles
 x<-list(title="Min Current")
 y<-list(title="Fixed Current")
-Fitness <- jdata2$Fitness # Couldn't figure out how to change colour scale title...
+Var3 <- jdata2$Var3 # Couldn't figure out how to change colour scale title...
 
-plot_ly(y=jdata2$cFixedCurrent, x=jdata2$cMinCurrent, z=Fitness,type="heatmap") %>%
+plot_ly(y=jdata2$cVar2, x=jdata2$cVar1, z=Var3,type="heatmap") %>%
           layout(xaxis = x, yaxis = y)
  
