@@ -1,0 +1,78 @@
+---
+title: "Streetlight Metal Pole Stock Code Investigation"
+output: 
+  html_document:
+    fig_caption: true
+---
+
+
+```{r, include=FALSE}
+# set working directory (or comment this and use the menu: Session > Set Working Directory > To Source File Location)
+setwd("C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Info Packs\\Dx Streetlights\\Stock_Code_Investigation")
+
+library(plotly) #plotting
+library(stargazer) #formatting tables
+
+# import source data (2nd argument forces datatypes to character string)
+data <- read.csv("Stock_Code_Dates_Revised.csv", colClasses = "character")
+ 
+# create new install date column using R date objects (for use with > and < operators)
+data$RInstall_Date <- as.POSIXct(as.Date(data$INSTALLED_DATE, '%d/%m/%Y'))
+data$RRevised_Install_Date <- as.POSIXct(as.Date(data$Revised_Installed_Date, '%d/%m/%Y'))
+
+# bin dates and crosstab
+cuts <- seq(from=as.POSIXct("1900-01-01 00:00"), by = "1 years", to=as.POSIXct("2017-01-01 00:00"))
+data$RInstallYear <- cut(data$RInstall_Date, cuts, right = TRUE)
+data$RRevisedInstallYear <- cut(data$RRevised_Install_Date, cuts, right = TRUE)
+
+tbl_RInstallYear <- (table(data$RInstallYear))
+tbl_RRevisedInstallYear <- (table(data$RRevisedInstallYear))
+```
+
+Using stock code records from the Ellipse Data Warehouse it can be shown that the installation dates for some streetlight metal poles are likely to be incorrect.
+
+Stock codes are as follows:
+
+```{r, echo=FALSE}
+stock_code_df <- as.data.frame(table(data$STOCK_CODE))
+colnames(stock_code_df) <- c("Stock Code","Count")
+stargazer(stock_code_df,type="text",summary=FALSE)
+```
+
+Each stock code has an associated creation date. The installation date for any DSLMP should not be less than its stock code creation date.
+
+Using this rule to substitute stock code creation dates for incorrect install dates results in a significant change to the install year profile for DSLMPs.
+
+Current install dates vs. revised dates.
+
+```{r, echo=FALSE, message=FALSE, fig.cap='A Figure'}
+
+f <- list(
+  family = "Courier New, monospace",
+  size = 18,
+  color = "#7f7f7f"
+)
+x <- list(
+  title = "Installation Year",
+  titlefont = f
+)
+y <- list(
+  title = "Count of Poles",
+  titlefont = f
+)
+
+p <- plot_ly(
+  x = rownames(tbl_RInstallYear),
+  y = tbl_RInstallYear,
+  fill = "tozeroy"
+) %>%
+  layout(xaxis = x, yaxis = y)
+
+add_trace(p,
+  x = rownames(tbl_RRevisedInstallYear),
+  y = tbl_RRevisedInstallYear,
+  fill = "tonexty"
+)
+```
+
+
