@@ -1,0 +1,9 @@
+########------------ R_Is_Insane.R: Dealing With Presence of NAs in Row -------------########
+
+df <- data.frame(name = LETTERS[1:10], number1 = 1:10, number2 = c(10:3, NA, NA))
+
+#wtf? casts entire row to NA
+df[df$number1 < df$number2, ]
+
+#filtered but doesn't solve the problem
+df[df$number1 < df$number2 & !is.na(df$number2), ]
