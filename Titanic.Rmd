@@ -1,0 +1,480 @@
+---
+title: "Project Report"
+author: "Lewis David Peaty"
+date: "6 November 2015"
+output: html_document
+---
+```{r, echo=FALSE}
+#Install rattle for visualisation if necessary
+#install.packages('rattle')
+library(ggplot2)
+
+#Import data
+train <- read.csv("data/train.csv")
+test <- read.csv("data/test.csv")
+
+#Modify training set
+train$AgeGroups <- cut(train$Age,c(0,8,60,100))
+train$Title <- sapply(train$Name,FUN = function(x) {strsplit(as.character(x), split='[,.]')[[1]][2]})
+ChildTitles <- c("Master","Miss","Ms","Mlle")
+train$Child <- sapply(train$Title,FUN = function(x,y) {if(any(ChildTitles==trimws(x))) {1} else {0}})
+
+#Modify test set
+test$AgeGroups <- cut(test$Age,c(0,8,60,100))
+test$Title <- sapply(test$Name,FUN = function(x) {strsplit(as.character(x), split='[,.]')[[1]][2]})
+ChildTitles <- c("Master","Miss","Ms","Mlle")
+test$Child <- sapply(test$Title,FUN = function(x,y) {if(any(ChildTitles==trimws(x))) {1} else {0}})
+
+#Generate calibration set
+set.seed(7043459)#(602957)
+train$cal <- ifelse(runif(length(train$PassengerId),min = 0,max =1)>0.1,0,1)
+cal <- train[train$cal == 1,]
+caltrain <- train[train$cal == 0,]
+
+
+```
+
+The sections of this project are defined as-per the project requirements, the project is also intended to align with the Data Science Project Lifecycle described in the textbook. Two stages from project lifecycle are omitted: The Collection And Management of the Data step of the Project Lifecycle has been completed by Kaggle, so this step is not included. Model deployment is also not considered as the model is designed for once off use on a single dataset.
+
+![The Lifecycle of a Data Science Project](figures/DS_Flow_Chart.jpg)
+
+##Sections
+
+- **Background**: The Background section defines the goal of the project and contains a discussion of the information available in the dataset.
+- **Exploratory Analysis**: Sex, Class, and Age variables are explored and evaluated against a calibration set as single variable models. Title information from the Name variable is extracted and used to create a new Child variable which is also evaluated as a single variable model.
+- **Building and Evaluating the Model**: Several multi-variable models are created using the Naive Bayes and Decision Tree methods based on the variables previously explored. The models are tested against calibration data to gain an understanding of their accuracy.
+- **Predicting Passenger Survival**: The results from the multi-variable models are uploaded to Kaggle and their accuracy is compared. Different input variable combinations are tested to explore the potential for increasing accuracy and the effects of overfitting.
+- **Conclusions**: Final summary and conclusions drawn from analysis.
+
+
+
+# Background
+
+The goal of this project is to predict the survival of the test set of titanic passengers. This is a two-category classification problem, i.e. the model must classify each passenger as a survivor or not. 
+Success is measured by the percentage of passengers correctly classified, this is equivalent to the accuracy metric: 
+
+$$Accuracy = \frac{NumCorrect}{ NumCorrect + NumIncorrect}$$
+
+Where $NumCorrect$ is the count of correct predictions in the test set and $NumIncorrect$ is the count of incorrect predictions in the test set.
+
+The data have already been prepared in a form suitable for analysis in R. The dataset is a passenger manifest which tabulates the various information the shipping operator would have known about its passengers. This includes:
+
+- Age
+- Sex
+- Fare
+- Passenger Class
+- Name
+- Cabin
+- Port of Embarkation
+- Ticket Number
+- Number of Siblings/Spouses Aboard
+- Number of Parents/Children Aboard
+
+Finally, the survival status of each passenger is included in the training data and omitted from the test data.
+
+#Exploratory Analysis
+
+As per the project specification, Sex, Age, and Class have been chosen for exploratory analysis. Based on the story of the Titanic, sex and age should be good predictors of survival, since women and children were supposedly given priority access to the lifeboats. Class may also be a good predictor as it could be assumed (cynically) that the wealthier passengers were also given priority access to the lifeboats. Passenger names have also been explored and used to extract titles of passengers in order to more accurately identify children by creating a new `train$Title` variable.
+
+The predictive power of each variable is explored by creating single variables models and evaluating them against a calibration set of 10% of the training data.
+
+
+
+##Sex
+
+Survival as a function of sex can be easily visualised as both variables are categorical with only two categories.
+
+```{r, echo=FALSE,fig.align='center'}
+Tbl_Sex <- prop.table(table(train$Sex,train$Survived),1)
+rownames(Tbl_Sex) <- c("Female", "Male")
+colnames(Tbl_Sex) <- c("Died","Survived")
+plot(Tbl_Sex,xlab="Sex",ylab="Survival",main="Survival by Sex")
+Tbl_Sex
+```
+
+
+From the plot of survival by sex it is clear that sex is a good predictor of survival in the training set. This is consistent with the story of the Titanic!
+
+Using sex as a single variable model, it can be predicted that all males die and all females live. 
+
+```{r, echo=FALSE,fig.align='center'}
+#Assume all males die and all females live
+cal$predSex <- ifelse(cal$Sex=="male",'Predicted Dead','Predicted Survived')
+
+#Compute confusion matrix and accuracy
+mat_confusion <- table(cal$Survived,cal$predSex)
+accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+
+rownames(mat_confusion) <- c("Died", "Survived")
+plot(mat_confusion,main="Confusion Matrix (Sex Model)")
+mat_confusion
+paste("The accuracy of the sex single variable model is: ", accuracy*100,"%",sep = "")
+```
+
+As predicted, the sex single variable model shows good accuracy when tested against the calibration data. A majority of deaths and a majority of survivals are correctly identified.
+
+
+#Class
+
+```{r, echo=FALSE,fig.align='center'}
+Tbl_Class <- prop.table(table(train$Pclass,train$Survived),1)
+rownames(Tbl_Class) <- c("1st Class", "2nd Class","3rd Class")
+colnames(Tbl_Class) <- c("Died","Survived")
+plot(Tbl_Class,xlab="Class",ylab="Survival",main="Survival by Class")
+Tbl_Class
+```
+
+From the plot it can be seen that survival is positively correlated with class. 
+Using Class as a single variable model:
+
+```{r,echo=FALSE,fig.align='center'}
+tab_predclass <- round(prop.table(table(caltrain$Survived,caltrain$Pclass),2))
+tab_predclass <- ifelse(tab_predclass==1,"Predicted Dead",  "Predicted Survived")
+colnames(tab_predclass) <- c("1st Class", "2nd Class","3rd Class")
+tab_predclass[1,]
+cal$predClass <- sapply(cal$Pclass,FUN = function(x) {tab_predclass[1,x]} )
+mat_confusion <- table(cal$Survived,cal$predClass)
+accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+
+rownames(mat_confusion) <- c("Died", "Survived")
+plot(mat_confusion,main="Confusion Matrix (Class Model)")
+mat_confusion
+paste("The accuracy of the class single variable model is: ", accuracy*100,"%",sep = "")
+
+```
+
+This model tends to over-estimate death rates. The root cause of this seems to be the passengers in class 2 who have an approximately equal probability of surviving or dying. Forcing the prediction either way when the probability is so close to 50% causes the model to greatly over or underestimate the survival rate of those passengers.
+
+
+##Age
+
+Visualising survival as a function of age is more difficult than the previous variables as the dependent variable is categorical with only two categories and the independent variable is numerical.
+
+```{r,echo=FALSE,fig.align='center'}
+ggplot(train[!is.na(train$Age),], aes(x=Age, y=Survived)) +
+  geom_point(shape=1) +     # Use hollow circles
+  stat_smooth(method="glm",family="binomial",se=FALSE)+
+  geom_smooth(method='loess') +
+  ggtitle("Survival by Age")
+```
+
+It is very difficult to determine any insights from simply plotting the points. However, by applying two smoothing curves we can gain two insights:
+
+  - A logistic regression indicates that the probability of survival decreases slightly with age.
+  + A locally smoothed curve shows that there are at arguably 3 distinct regions within the data: Very young children under about 8, teenagers and adults under 60, and      seniors over about the age of 60. Survival rates are relatively high for very young children, poor for teenagers and adults, and very poor for seniors.
+  
+  Grouping the data according to the observed age groups produces the following table:
+  
+```{r,echo=FALSE,fig.align='center'}
+#SURVIVAL BY AGE GROUP
+caltrain$AgeGroups <- cut(caltrain$Age,c(0,8,60,100))
+Tbl_AgeGroups <- table(caltrain$AgeGroups,caltrain$Survived)
+colnames(Tbl_AgeGroups) <- c("Died","Survived")
+rownames(Tbl_AgeGroups) <- c("Child <8","Adult/Adolescent","Senior >60")
+plot(Tbl_AgeGroups,main="Survival by Age Group", xlab="Age Group", ylab="Survival")
+Tbl_AgeGroups
+```
+
+With this grouping there is a clear negative correlation between age and survival probability. Using this as a single variable model gives the following result:
+
+```{r,echo=FALSE,fig.align='center'}
+tab_predAgeGrp <- round(prop.table(Tbl_AgeGroups,1))
+tab_predAgeGrp <- ifelse(tab_predAgeGrp==1,"Predicted Dead",  "Predicted Survived")
+rownames(tab_predAgeGrp) <- c("Child <8","Adult/Adolescent","Senior >60")
+tab_predAgeGrp[,1]
+cal$predAgeGrp <- sapply(cal$AgeGroups,FUN = function(x) {tab_predAgeGrp[x,1]})
+#cal$predAgeGrp <- ifelse(cal$predAgeGrp==0,"Predicted Dead",  "Predicted Survived")
+mat_confusion <- table(cal$Survived,cal$predAgeGrp)
+rownames(mat_confusion) <- c("Died","Survived")
+accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+plot(mat_confusion,main="Confusion Matrix (Age Model)")
+mat_confusion
+paste("The accuracy of the age group single variable model is: ", accuracy*100,"%",sep = "")
+```
+
+This model suffers from a similar issue to the class model: The majority of passengers are in the Adult/Adolescent category and thus have near to 50% chance of survival. A single variable model must predict one way or the other based on this, and thus greatly over or underestimates the chances of survival. In this case we see the model predicts death for the entire Adult/Adolescent population, correctly predicting most of the actual deaths but failing to identify most of the survivors.
+
+
+
+
+#Children According to Titles
+
+It has already been shown that younger passengers generally have a higher chance of survival, however it is preferable to be able to identify specific passengers who would have been considered as children rather than relying on correlation between survival and age. By extracting title information from the Name variable it is possible to create a new `train$Child` variable to indicate whether a passenger is a child or not. Using this method may yield superior results to the Age based method for identifying children.
+
+The titles contained in the Name variable which could correspond to children are:
+
+- Master
+- Ms (abbreviation of miss)
+- Mlle (Mademoiselle)
+- Miss
+
+In order to create the `train$Child` variable, title information must be extracted from the Name variable and stored in a new `train$Title` variable. This is possible using the strsplit function with a regular expression.
+
+```
+train$Title <- sapply(train$Name,FUN = function(x) {strsplit(as.character(x), split='[,.]')[[1]][2]})
+```
+
+Once the `train$Title` variable has been created, the `train$Child` variable can be created by checking for string matches with the previously identified titles:
+
+```
+ChildTitles <- c("Master","Miss","Ms","Mlle")
+train$Child <- sapply(train$Title,FUN = function(x,y) {if(any(ChildTitles==trimws(x))) {1} else {0}})
+```
+
+Computing a contingency table from the `train$Child` variable indicates that children do have a distinctly higher probability of survival than adults.
+
+```{r, echo=FALSE,fig.align='center'}
+
+#SURVIVAL BY CHILDREN
+Tbl_Children <- table(caltrain$Child,caltrain$Survived)
+rownames(Tbl_Children) <- c("Adult","Child")
+colnames(Tbl_Children) <- c("Died","Survived")
+Tbl_Children
+prop.table(Tbl_Children,1)
+```
+
+Visualising the contingency table:
+
+```{r, echo=FALSE,fig.align='center'}
+plot(Tbl_Children,main="Survival by Children", ylab="Survival")
+
+```
+Testing the `train$Child` single variable model against the calibration data:
+
+```{r, echo=FALSE,fig.align='center'}
+
+tab_predChildren <- round(prop.table(Tbl_Children,1))
+tab_predChildren <- ifelse(tab_predChildren==1,"Predicted Dead",  "Predicted Survived")
+tab_predChildren[,1]
+cal$predChildren <- sapply(cal$Child,FUN = function(x) {tab_predChildren[x+1,1]})
+#cal$predAgeGrp <- ifelse(cal$predAgeGrp==0,"Predicted Dead",  "Predicted Survived")
+mat_confusion <- table(cal$Survived,cal$predChildren)
+rownames(mat_confusion) <- c("Died","Survived")
+accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+plot(mat_confusion,main="Confusion Matrix (Child Model)")
+mat_confusion
+paste("The accuracy of the child single variable model is: ", accuracy*100,"%",sep = "")
+
+```
+
+The `train$Child` single variable model appears to be superior to the age based model for predicting survival. Like the age based model it correctly predicts most of the deaths, but also manages to predict a good proportion of the survivors.
+
+#Building and Evaluating the Model
+
+Each of the single variable models have been shown to have some worth. Ideally multi-variable models can be used to combine the strengths of each variable to generate better predictions.
+For the multi-variable models, Sex and `train$Child` are selected as input variables as these are the most reliable single variable models. The methods used to produce multi-variable models are Naive Bayes and Decision Tree.
+
+
+
+##Naive Bayes
+A Naive Bayes model is appropriate for this classification problem as it can be used to create a multi-variable model from the best of the single variable models.
+In this case, the single variable models based on Sex and `train$Child` have performed best on the calibration data, so they are both included in the Naive Bayes model.
+The `naiveBayes()` function of the e1071 library is used here to generate the model.
+
+```{r, echo=TRUE,fig.align='center'}
+library(e1071) #e1071 contains the naiveBayes function
+m <- naiveBayes(as.factor(Survived) ~ Sex + Child , caltrain) 
+cal$predNaiveBayes <- predict(m,newdata=cal[c("Sex","Child")])
+mat_confusion <- table(cal$Survived,cal$predNaiveBayes)
+accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+```
+
+```{r,echo=FALSE,fig.align='center'}
+m <- naiveBayes(as.factor(Survived) ~ Sex + Child , train) 
+test$predNaiveBayes <- predict(m,newdata=test[c("Sex","Child")])
+
+plot(mat_confusion)
+paste("The accuracy of the Naive Bayes model is: ", accuracy*100,"%",sep = "")
+```
+
+The result indicates an improvement when using the Naive Bayes model compared to the previous best accuracy score using the single-variable sex based model!
+
+Because the calibration dataset is randomly selected, it is better to gauge the accuracy of the model by creating a sample distribution of accuracy values over multiple calibration sets. 
+
+
+
+```{r,echo=FALSE,fig.align='center'}
+#Code to generate sample distribution of accuracies (caution: slow)
+# AccuracySampleDistribution <- vector(mode = "numeric", length=10000)
+# for(i in 1:10000) {
+#   train$cal <- ifelse(runif(length(train$PassengerId),min = 0,max =1)>0.1,0,1)
+#   cal <- train[train$cal == 1,]
+#   caltrain <- train[train$cal == 0,]
+#   
+#   m <- naiveBayes(as.factor(Survived) ~ Sex + Child , caltrain) 
+#   cal$predNaiveBayes <- predict(m,newdata=cal[c("Sex","Child")])
+#   mat_confusion <- table(cal$Survived,cal$predNaiveBayes)
+#   accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+#   AccuracySampleDistribution[i] <- accuracy
+# }
+# asd <- as.data.frame(table(round(AccuracySampleDistribution*100)))
+load("data/Gender_Child_Accuracy_Dist.RData")
+
+#Calculate the distribution mean
+acnorm <- as.numeric(asd$Var1)+(93-length(asd$Var1))
+frnorm <- asd$Freq/sum(asd$Freq)
+acmean <- sum(acnorm*frnorm)
+acstddev <- sqrt(sum((acnorm-acmean)^2*frnorm))
+
+asd$Freq <- asd$Freq/sum(asd$Freq)
+qplot(x=Var1,y=Freq, data = asd, geom = "histogram",stat="identity",xlab = "Accuracy",ylab="Count",main = "Sample Distribution of Accuracy Scores for Naive Bayes Model [n=10000]")
+```
+
+The mean sample accuracy is 78.75% and the standard deviation is only 4.17%, so the model should be trusted to predict survivors with around 78.75% $\pm$ 4.17% accuracy. To test this assertion the model must be applied to the test data.
+
+##Decision Tree
+The Decision Tree is another algorithm appropriate for this classification problem. A Decision Tree can be generated easily using the rpart library and using the rattle library for good visualisation.
+
+```{r,echo=TRUE}
+
+library(rpart)
+library(rattle)
+m <- rpart(Survived ~ Sex + Child, data=caltrain, method="class")
+a <-predict(m,newdata=cal[c("Sex","Child")])
+cal$predDecisionTree <- round(a[,2])
+fancyRpartPlot(m)
+```
+
+From the visualisation it can be seen that the Decision Tree first splits the population by sex, assigning females as survivors. Secondly, the remaining male population is split into children who are assigned as survivors, and adults who are assigned as non survivors.
+
+Repeating the procedure used for the Naive Bayes model, the calibration set can be resampled many times and the model recalculated to create a sample distribution of accuracy values.
+
+```{r,echo=FALSE}
+#Code to generate sample distribution of accuracies (caution: slow)
+# AccuracySampleDistribution <- vector(mode = "numeric", length=10000)
+# for(i in 1:10000) {
+#   train$cal <- ifelse(runif(length(train$PassengerId),min = 0,max =1)>0.1,0,1)
+#   cal <- train[train$cal == 1,]
+#   caltrain <- train[train$cal == 0,]
+# 
+#   m <- rpart(Survived ~ Sex + Child, data=caltrain, method="class")
+#   a <-predict(m,newdata=cal[c("Sex","Child")])
+#   cal$predDecisionTree <- round(a[,2])
+#   mat_confusion <- table(cal$Survived,cal$predDecisionTree)
+#   accuracy <- sum(diag(mat_confusion)/sum(mat_confusion))
+#   AccuracySampleDistribution[i] <- accuracy
+# }
+# asd2 <- as.data.frame(table(round(AccuracySampleDistribution*100)))
+load(file="data/Gender_Child_Accuracy_Dist_DT.Rdata")
+asd2$Freq <- asd2$Freq/sum(asd2$Freq)
+qplot(x=Var1,y=Freq, data = asd2, geom = "histogram",stat="identity",xlab = "Accuracy",ylab="Count",main = "Sample Distribution of Accuracy Scores for Decision Tree Model [n=10000]")
+
+#Calculate the distribution mean
+acnorm <- as.numeric(asd2$Var1)+(94-length(asd2$Var1))
+frnorm <- asd2$Freq/sum(asd2$Freq)
+acmean <- sum(acnorm*frnorm)
+acstddev <- sqrt(sum((acnorm-acmean)^2*frnorm))
+```
+
+The mean sample accuracy is 77.78% and the standard deviation is 4.22%, so this model gives a very similar result to the Naive Bayes model. Like the Naive Bayes model, the only way to truly know the accuracy of the model is by applying it to the test data.
+
+
+
+
+#Predicting Passenger Survival
+
+##Naive Bayes
+
+The Naive Bayes model performs passably on the calibration data and so it is worth applying to the test data.
+The test is completed by submitting to the Kaggle website.
+
+***
+
+```{r,echo=TRUE}
+
+library(e1071)
+m <- naiveBayes(as.factor(Survived) ~ Sex + Child , train) 
+test$Survived <- predict(m,newdata=test[c("Sex","Child")])
+write.csv(x=cbind(test$PassengerId,test$Survived), file="data/naiveBayes.csv")
+
+```
+
+![Model Score](figures/KaggleTitanicNaiveBayes.png)
+
+***
+
+The model performs slightly worse on the test data compared to the calibration data. However the performance is well within the interval expected based on the calibration data.
+
+In an attempt to boost the models performance, the Class variable can be included. The Age variable is not used here as it is not independent of the `train$Child` variable.
+
+***
+
+```{r,echo=TRUE}
+
+library(e1071)
+m <- naiveBayes(as.factor(Survived) ~ Sex + Child + Pclass , train) 
+test$Survived <- predict(m,newdata=test[c("Sex","Child", "Pclass")])
+write.csv(x=cbind(test$PassengerId,test$Survived), file="data/naiveBayes2.csv")
+
+```
+
+![Model Score](figures/KaggleTitanicNaiveBayes2.png)
+
+***
+
+Unfortunately, the addition of the class data appears to cause overfitting and actually reduces the performance of the model on the test data below the simpler 2 variable model.
+
+##Decision Tree
+
+The Decision Tree model performed similarly to the Naive Bayes on the calibration dataset, so it is also worth testing against the test set.
+
+***
+
+```{r,echo=TRUE}
+
+library(rpart)
+m <- rpart(Survived ~ Sex + Child, data=train, method="class")
+a <-predict(m,newdata=test[c("Sex","Child")])
+test$Survived <- round(a[,2])
+write.csv(x=cbind(test$PassengerId,test$Survived), file="data/decisionTree.csv")
+
+```
+
+![Model Score](figures/KaggleTitanicDecisionTree.png)
+
+***
+
+The Decision Tree model performs identically on the test set compared to the Naive Bayes model!
+
+The Class variable can also be included in the Decision Tree to attempt to boost performance. Age is again omitted as it is not independent of `train$Child`.
+
+***
+
+```{r,echo=TRUE}
+
+library(rpart)
+m <- rpart(Survived ~ Sex + Child + Pclass, data=train, method="class")
+a <-predict(m,newdata=test[c("Sex","Child", "Pclass")])
+test$Survived <- round(a[,2])
+write.csv(x=cbind(test$PassengerId,test$Survived), file="data/decisionTree2.csv")
+fancyRpartPlot(m)
+
+```
+
+***
+
+From the Decision Tree plot it can be seen that an extra decision has been added, subdividing the adult males into upper and lower classes.
+
+![Model Score](figures/KaggleTitanicDecisionTree2.png)
+
+***
+
+Unlike the Naive Bayes model, the Decision Tree model increases in accuracy when using the Class variable. This is the most successful model so far and further improvements will probably require the integration of other variables from the training dataset which have not been investigated yet.
+
+***
+
+#Conclusions
+
+In conclusion, two different multi-variable models have been developed, evaluated, and tested against the Kaggle test set, using the Naive Bayes algorithm from R library E1071 and the Decision Tree from R library rpart. The models have been developed based on an exploratory analysis of the data available and manipulation of the data to create a new variable (`train$Child`). Both models were generated using standard R libraries.
+
+Final results indicate that the Decision Tree model based on Sex, Class, and Child status is the best model out of those considered, with an accuracy score of 77.512%. Further refinements could be made based on a broader investigation of the available data, i.e. the inclusion of more of the available variables. However, the possibility of increasing accuracy must also be balanced against the risk of overfitting as demonstrated by the poor performance of the Naive Bayes model including the Class variable compared to the model which did not include Class.
+
+The results also show that the myth of the Titanic is consistent with the data available: Women and children were given better access to the lifeboats. However the data shows that passengers of higher class also enjoyed an better chance of escaping relative to their poorer shipmates.
+
+
+
+
+
+
+
+
