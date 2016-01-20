@@ -1,0 +1,80 @@
+
+#######---------------- 1.0 Boilerplate----------------#########
+library(RODBC) #odbc library
+library(sqldf) #use sql on data frames
+library(xlsx)  #export data to xlsx
+library(lubridate) #date arithmetic
+setwd("")
+
+#Error codes
+NEVER_INSPECTED <- -1
+
+#################------------ 2.0 Data Extraction----------------#################
+#Use monthly report
+db<-file.path("v24 report")
+channel<-odbcConnectAccess2007(db)
+profile<-sqlFetch(channel,"")
+
+
+#################----------------------- 3.0 Data Processing------------------------#################
+
+#Compute Age
+#Note: Round function necessary as tiny decimals can change inequalities e.g. 8<=8.000114
+profile$Age <- round(digits=2,as.numeric(difftime("2016-01-20", profile$'Installed Date',units = "days"))/365.25)
+#Optionally add a year to include soon-to-be-inspected poles
+#profile$Age <- profile$Age + 1
+
+#Sanity check 1 - na.fail?
+na.fail(profile$Age)
+#Sanity check 2 - Visualisation
+plot(table(round(digits=0,profile$Age)))
+#Sanity check 3 - Display first 10 dates and ages
+sqldf('select "Plant Number", "Installed Date", "2016-01-20" as Today, Age from profile order by "Plant Number"')[1:10,]
+
+#Compute Time Since Inspection
+profile$'Years Since Inspection' <- round(digits=2,as.numeric(difftime("2016-01-20",profile$`Maximum Inspection Date`, units="days")/365.25))
+profile$`Years Since Inspection` <- ifelse(profile$`Years Since Inspection`<0,NEVER_INSPECTED,profile$`Years Since Inspection`)
+#Sanity check 1 - Visualisation
+plot(table(profile$`Years Since Inspection`))
+#Sanity check 2 - Display first 10 dates and ages
+sqldf('select "Maximum Inspection Date", "2016-01-20" as Today, "Years Since Inspection" from profile')[1:10,]
+
+#Compute Corrosion Zones
+profile$`Is Pole Exposed To Reticulation` <- ifelse(is.na(profile$`Is Pole Exposed To Reticulation`),"N",as.character(profile$`Is Pole Exposed To Reticulation`))
+profile$'Corrosion Zone' <- ifelse(profile$`Is Pole Exposed To Reticulation` == "Y" | profile$`Nearest Distance from Coast` <= 5 | profile$`Is Within 300m of Salt Lake` == "YES",1,0)
+#Sanity check 1 - na.fail?
+na.fail(profile$`Corrosion Zone`)
+#Sanity check 2 - Visualisation
+plot(table(profile$`Corrosion Zone`))
+#Sanity checl 3 - checksum
+sum(profile$`Corrosion Zone`)
+
+############--------------- 4.0 Outputs ----------------##############
+
+#Store summary values as a list of key-value pairs
+Summary_Values <- list()
+
+Under_Or_Eq_4_In_CZ <- profile[profile$Age<=4 & profile$`Corrosion Zone`==1,]
+Between_4_And_8_In_CZ <- profile[profile$Age>=4 & profile$Age<=8 & profile$`Corrosion Zone`==1,]
+
+#Savings volumes
+Summary_Values[["Under_8_Due_For_Inspection"]] <- nrow( Between_4_And_8_In_CZ[Between_4_And_8_In_CZ$`Years Since Inspection`<0,] )
+Summary_Values[["Under_4_In_CZ"]] <- nrow(Under_Or_Eq_4_In_CZ[Under_Or_Eq_4_In_CZ$`Years Since Inspection`<0,])
+
+
+sqldf('select * from profile where Age<=4 and "Corrosion Zone"=1')
+sqldf('select "Plant Number", "Installed Date", "2016-01-20" as Today, Age from Between_4_And_8_In_CZ order by "Plant Number"')[1:10,]
+
+
+#write.csv(x = sqldf('select "Plant Number", Age, "Corrosion Zone" from Between_4_And_8_In_CZ'), file = "Between_4_And_8_In_CZ.csv")
+
+
+
+
+
+
+
+
+
+
+
