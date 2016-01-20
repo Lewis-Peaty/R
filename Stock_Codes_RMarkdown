@@ -1,5 +1,5 @@
 ---
-title: "Streetlight Metal Pole Stock Code Investigation"
+title: "Stock Code Investigation"
 output: 
   html_document:
     fig_caption: true
@@ -8,7 +8,7 @@ output:
 
 ```{r, include=FALSE}
 # set working directory (or comment this and use the menu: Session > Set Working Directory > To Source File Location)
-setwd("C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Info Packs\\Dx Streetlights\\Stock_Code_Investigation")
+setwd("")
 
 library(plotly) #plotting
 library(stargazer) #formatting tables
@@ -29,7 +29,7 @@ tbl_RInstallYear <- (table(data$RInstallYear))
 tbl_RRevisedInstallYear <- (table(data$RRevisedInstallYear))
 ```
 
-Using stock code records from the Ellipse Data Warehouse it can be shown that the installation dates for some streetlight metal poles are likely to be incorrect.
+Using stock code records it can be shown that some installation dates are likely to be incorrect.
 
 Stock codes are as follows:
 
