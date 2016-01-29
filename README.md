@@ -1,2 +1,2 @@
 # R
-Useful R scripts
+Reusable (mostly) code snippets from my work.
