@@ -1,9 +1,9 @@
 
 # set working directory (or comment this and use the menu: Session > Set Working Directory > To Source File Location)
-setwd("~/Documents/Projects/AP_Repex Work")
+setwd("C:\Path\To\Working\Directory")
 
 # import source data (2nd argument forces datatypes to character string)
-data <- read.csv("LSTD_All_Current_With_LatLong_T1.csv", colClasses = "character")
+data <- read.csv("Your.csv", colClasses = "character")
 
 # create new install date column using R date objects (for use with > and < operators)
 data$RInstall_Date <- as.POSIXct(as.Date(data$DATE_INSTALLED, '%d/%m/%Y'))
