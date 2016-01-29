@@ -1,7 +1,7 @@
 #Using RODBC library to query an accdb file 
 library(RODBC)
-setwd("C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Info Packs\\Dx Streetlights")
-db<-file.path("Condition_State_Analysis.accdb")
+setwd("C:\\Path\\To\\Your\\Working\\Directory")
+db<-file.path("Your.accdb")
 channel<-odbcConnectAccess2007(db)
-data<-sqlFetch(channel,"Inspections")
+data<-sqlFetch(channel,"Table_Name")
 data
