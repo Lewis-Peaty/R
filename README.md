@@ -1,2 +1,2 @@
 # R
-Reusable (mostly) code snippets from my work.
+Reusable (mostly) code snippets.
