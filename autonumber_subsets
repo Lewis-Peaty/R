@@ -1,3 +1,4 @@
+library(sqldf)
 
 setwd("C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Conductor_Sampling\\Computing New Samples for the 500 15-3-2016\\")
 d <- read.csv("C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Conductor_Sampling\\Computing New Samples for the 500 15-3-2016\\candidate_list.csv",stringsAsFactors = FALSE)
@@ -39,26 +40,14 @@ alternatives[1,1] <- "sdgfdfgdfgdfgdfg"
 #Check these manually later
 bads <- data.frame(FailedCarrier=as.character(0),stringsAsFactors = FALSE)
 
-# bad_material_carriers_in_candidate_list <- character(0)
-# for(id in unique(d$ID)){
-#  for(sample_id in 1:5){
-#    tryCatch(expr = 
-#               if(d$BadMaterialType[d$ID==id & d$Primary.or.Alternate==paste(sep="","A",sample_id)]==1){
-#               bad_material_carriers_in_candidate_list <- c(bad_material_carriers_in_candidate_list,d$NewPICK_ID[d$ID==id & d$Primary.or.Alternate==paste(sep="","A",sample_id)])}
-#    ,error = function(x){})
-#    tryCatch(expr = 
-#               if(d$BadMaterialType[d$ID==id & d$Primary.or.Alternate==paste(sep="","P",sample_id)]==1){
-#                 bad_material_carriers_in_candidate_list <- c(bad_material_carriers_in_candidate_list,d$NewPICK_ID[d$ID==id & d$Primary.or.Alternate==paste(sep="","P",sample_id)])}
-#             ,error = function(x){})   
-#  }
-# }
-# unique(bad_material_carriers_in_candidate_list)
 
-unique(d$ID[d$BadMaterialType==1])
-
+#Include the candidate carriers with bad material type
+failed_carriers_list <- failed_samples$CONDUCTOR_PICK_ID..Carrier.Section.ID.
+candidate_carriers_with_bad_materials <- d$NewPICK_ID[d$BadMaterialType==1 & d$Primary.or.Alternate!=""]
+failed_carriers_list <- union(failed_carriers_list,candidate_carriers_with_bad_materials)
 
 #Loop through failed samples for carrier codes
-for (failed_carrier in failed_samples$CONDUCTOR_PICK_ID..Carrier.Section.ID.) {
+for (failed_carrier in failed_carriers_list) {
  #Find the corresponding experiment ID in the candidate list
  id <- d$ID[d$NewPICK_ID==failed_carrier]
  electorate <- d$ELECTRT_NAM[d$NewPICK_ID==failed_carrier]
@@ -75,6 +64,10 @@ for (failed_carrier in failed_samples$CONDUCTOR_PICK_ID..Carrier.Section.ID.) {
  #Sometimes d$Primary.or.Alternate doesn't have a number so check for that (e.g it's just "A")
  if(length(sub_sample_num)==0){next}
  if(!is.na(as.numeric(sub_sample_num))){
+   #Check that alternatives haven't already been found
+   if(length(grep(paste(sep="","B",sub_sample_num),rownames(table(d$Primary.or.Alternate[d$ID==id]))))>0){
+     print("Alternatives previously found for this ID and sub sample number!")
+     next}
    alternatives[nrow(alternatives),3] <- sub_sample_num
    #Try to find new candidates in same electorate
    unused_candidates <- d[d$ID==id & d$Primary.or.Alternate=="" & d$BadMaterialType==0 & d$ELECTRT_NAM==electorate ,]
@@ -115,10 +108,9 @@ table(d$Primary.or.Alternate)
 table(d$Primary.or.Alternate,d$Materials)
 table(d$Materials,d$EQUIP_CODE)
 table(d$Primary.or.Alternate,d$BadMaterialType)
-write.csv2(x=d,file="C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Conductor_Sampling\\candidate_list_with_alternatives.csv")
-write.csv2(x=alternatives,file="C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Conductor_Sampling\\alternatives.csv")
-#file <- paste(tempfile(), "candidate_list_with_alternatives.xlsx", sep=".")
-#write.xlsx(d, file=file)
+write.csv2(x=d,file="C:\\Users\\n043341\\Documents\\Documents\\Projects\\AP_Conductor_Sampling\\Computing New Samples for the 500 15-3-2016\\candidate_list_with_alternatives.csv")
+write.csv2(x=alternatives,file="C:\\Users\\n043341\\Documents\\Documents\\Projects\\Computing New Samples for the 500 15-3-2016\\AP_Conductor_Sampling\\alternatives.csv")
+
 
 #Check each experiment
 for( id in rownames(table(alternatives$ID))){
