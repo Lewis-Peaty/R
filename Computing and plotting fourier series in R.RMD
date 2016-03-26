@@ -9,28 +9,31 @@ Here is an example of how to compute and plot fourier series for simple function
 
 ```{r}
 
-# try some of these
+# try using some of these functions instead
 # f<- function(x){cos(x)}
 # f<- function(x){x>-0.5 & x<0.5}
 # f<- function(x){x>0}
+
+# edit these values change the function, 
 f <- function(x){x^3 + 0.5 * x^2 + 0.2 * x + 0.1} # the function we want to find fourier series of
 lower <- -1 # lower bound
 upper <- 1 # upper bound
-t <- seq(from=lower,to=upper,by=0.01) # domain to evaluate over
+increment <- 0.01 # time increment (smaller -> slower)
+num_harmonics <- 300 # number of harmonics to use
+
+t <- seq(from=lower,to=upper,by=increment) # vector of time values to evaluate f over
 f_t <- sapply(t,f) # evaluate f over t
 fundamental_frequency <- 1 / (upper - lower)   # fundamental frequency of f
-num_harmonics <- 300 # number of harmonics to use
 a_n <- as.numeric(0) # vector of cosine coefficients
 b_n <- as.numeric(0) # vector of sine coefficients
-# Get a_0 by integrating f_t / 2
-a_n[1] <- sum(f_t) / 2
+a_n[1] <- sum(f_t) / 2 # Get a_0 by integrating f_t / 2
 for(harmonic in 1:num_harmonics){ # compute coefficients for each harmonic in turn
   w <- fundamental_frequency # shouldn't there be 2*pi here??
   n <- harmonic
-  # Get Cosine Fourier Coefficient a_n by integrating f * cos(n w x)
+  # compute Cosine Fourier Coefficient a_n by integrating f * cos(n w x)
   c_n <- sapply(t,function(x){cos(n*w*x)})
   a_n <- append(a_n, sum(f_t * c_n))
-  # Get Sine Fourier Coefficient b_n by integrating f * sin(n w x)
+  # compute Sine Fourier Coefficient b_n by integrating f * sin(n w x)
   s_n <- sapply(t,function(x){sin(n*w*x)})
   b_n <- append(b_n, sum(f_t * s_n))
 }
@@ -51,6 +54,5 @@ F <- function(coefs,f0,ts){
 plot(t,f_t,"l")
 coefs <- cbind(a_n,b_n)
 plot(t,F(coefs,fundamental_frequency,t),"l")
-
 ```
 
