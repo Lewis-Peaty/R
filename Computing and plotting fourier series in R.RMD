@@ -2,7 +2,7 @@
 title: "Computing Fourier Series Numerically For Simple Functions Using R"
 author: "Lewis Peaty"
 date: "25 March 2016"
-output: html_document
+output: pdf_document
 ---
 
 Here is an example of how to compute and plot Fourier Series for simple functions using only the standard R library.
@@ -15,7 +15,8 @@ Here is an example of how to compute and plot Fourier Series for simple function
 # f<- function(x){x>0}
 
 # edit these values to change the function, interval, or the number of harmonics, 
-f <- function(x){x^3 + 0.5 * x^2 + 0.2 * x + 0.1} # the function we want to find the fourier series of
+f <- function(x){x^3 + 0.5 * x^2 + 0.2 * x + 0.1} # the function for which we want to
+                                                  #find the Fourier Series
 lower <- -1 # lower bound
 upper <- 1 # upper bound
 increment <- 0.01 # time increment (smaller -> slower)
@@ -23,10 +24,26 @@ num_harmonics <- 400 # number of harmonics to use- try a small value for fun!
 
 t <- seq(from=lower,to=upper,by=increment) # vector of time values to evaluate f over
 f_t <- sapply(t,f) # evaluate f over t
+
+```
+
+A plot of the original function:
+
+```{r}
+
+plot(t,f_t,"l")
+
+```
+
+Calculating the Fourier Coefficients:
+
+```{r}
+
 f0 <- 1 / (upper - lower)   # fundamental frequency of f
 a_n <- as.numeric(0) # vector of cosine coefficients
 b_n <- as.numeric(0) # vector of sine coefficients
-a_n[1] <- sum(f_t) / 2 # compute a_0 by integrating f_t / 2. This looks a little odd because R does not zero-index vectors
+a_n[1] <- sum(f_t) / 2 # compute a_0 by integrating f_t / 2. This looks a little odd because R 
+                       #does not zero-index vectors
 for(n in 1:num_harmonics){ # compute coefficients for each harmonic in turn
   w <- f0 # shouldn't there be 2*pi here??
   # compute Cosine Fourier Coefficient a_n by integrating f * cos(n w x)
@@ -53,7 +70,7 @@ The Fourier Series can be plotted in the time domain to see how it compares with
 
 ```{r}
 
-# Time to plot the harmonics!
+# This function will evaluate the Fourier Series in the time domain
 F <- function(coefs,f0,ts){
   w <- f0 # shouldn't there be 2*pi here??
   n_coefs <- nrow(coefs)
@@ -67,15 +84,7 @@ F <- function(coefs,f0,ts){
 
 ```
 
-Plotting the original function:
-
-```{r}
-
-plot(t,f_t,"l")
-
-```
-
-Plotting the computed Fourier Series:
+Plot of the computed Fourier Series:
 
 ```{r}
 
