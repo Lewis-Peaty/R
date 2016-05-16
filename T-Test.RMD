@@ -1,0 +1,147 @@
+---
+title: "T Test Presentation"
+author: "Lewis Peaty"
+date: "13 May 2016"
+output: ioslides_presentation
+---
+
+#Let's learn about T-Tests!
+
+## What Is The T-Test?
+
+> - The T-Test detects FALSE POSITIVES.
+> - The T-Test can tell you when your ideas (hypotheses) are wrong.
+
+## For Example:
+
+
+> * We think that "300M_FROM_SALT_LAKE" implies an increase in corrosion rate for asset X.    
+> * Follow the procedure:   
+  > * Randomly select equal sized samples of asset X which are <=300M from a salt lake, and >300M from a salt lake.
+  > * Run the test.
+  > * If the T-Test passes then you may say there is evidence "300M_FROM_SALT_LAKE" really does imply an increase in corrosion rate at the given significance level!
+
+## An Example Population Distribution
+
+Let's start by looking at a population of assets.
+
+```{r,echo=FALSE}
+`%c%` <- function(a,b){paste(sep="",a,b)}
+set.seed(23423544)
+dist <- (round(x = rnorm(1000,mean = 50,sd = 3),digits = 0))
+dist <- c(dist,round(x = rnorm(1000,mean = 75,sd = 3)))
+dist <- c(dist,round(x = runif(n = 1000,min = 0,max = 100)))
+dist <- ifelse(dist<0,0,dist)
+`Population Distribution` <- dist
+hist(`Population Distribution`,ylab = "Count of Asset X", xlab = "Corrosion Rate, n = 3000, mean = 58.305, sd = 20.72153")
+# print("The population mean is:")
+# print("n = " %c% length(dist))
+# print(mean(dist))
+# print(sd(dist))
+
+```
+
+
+
+## Sample Near To Salt Lake
+
+
+
+```{r, echo=FALSE}
+dist_df <- as.data.frame(dist)
+dist_df$`300M_FROM_SALT_LAKE` <- sample(c(TRUE,FALSE),size = 3000,replace = TRUE)
+dist_df$`300M_FROM_COAST` <-ifelse(dist_df$dist>50,FALSE,TRUE)
+for(i in 1:nrow(dist_df)){
+  if(dist_df[i,1]>50)
+    {dist_df$`300M_FROM_COAST`[i] <- sample(c(TRUE,FALSE),size = 1,replace=TRUE,prob=c(.75,.25))}
+  else
+    {dist_df$`300M_FROM_COAST`[i] <- sample(c(TRUE,FALSE),size = 1,replace=TRUE,prob=c(.25,.75))}
+}
+s1 <- sample(dist_df$dist[dist_df$`300M_FROM_SALT_LAKE`==TRUE],size = 50,replace = FALSE)
+s2 <- sample(dist_df$dist[dist_df$`300M_FROM_SALT_LAKE`==FALSE],size = 50,replace = FALSE)
+
+s3 <- sample(dist_df$dist[dist_df$`300M_FROM_COAST`==TRUE],size = 100,replace = FALSE)
+s4 <- sample(dist_df$dist[dist_df$`300M_FROM_COAST`==FALSE],size = 100,replace = FALSE)
+`Sample Distribution 1` <- s1
+`Sample Distribution 2` <- s2
+`Sample Near Salt Lake` <- s1
+`Sample Far From Salt Lake` <- s2
+`Sample Near Coast` <- s3
+`Sample Far From Coast` <- s4
+# mean(s1)
+# sd(s1)
+# mean(s2)
+# sd(s2)
+hist(`Sample Near Salt Lake`,ylab = "Count of Asset X", xlab = "Corrosion Rate, n = " %c% length(s1) %c% ", mean = " %c% mean(s1) %c% ", sd = " %c% sd(s1) )
+```
+
+## Sample Far From Salt Lake
+
+```{r,echo=FALSE}
+
+hist(`Sample Far From Salt Lake`,ylab = "Count of Asset X", xlab = "Corrosion Rate, n = " %c% length(s2) %c% ", mean = " %c% mean(s2) %c% ", sd = " %c% sd(s2) )
+
+
+```
+
+## Perform The T-Test
+
+Invoke the function in R (or Excel!), feeding in the two sample populations 
+
+```{r}
+
+t.test(s1,s2)
+
+```
+
+## What does it mean?
+
+> - P-Value = 0.6214 (62.14%)
+> - There is a 62.14% chance the variation in corrosion rates between our two samples was due to random chance!
+> - I.e. Our hypothesis that being <300M from a salt lake increases corrosion rate is probably wrong!
+
+
+## Sample Near To Coast
+
+Salt lakes are obviously irrelevant.
+Let's try assets which are within "300M_TO_COAST" instead!
+
+
+```{r,echo=FALSE}
+
+hist(`Sample Near Coast`,ylab = "Count of Asset X", xlab = "Corrosion Rate, n = " %c% length(s3) %c% ", mean = " %c% mean(s3) %c% ", sd = " %c% sd(s3) )
+
+
+```
+
+## Sample Far From Coast
+
+The histograms look different... But let's quantify the difference with a T-Test.
+
+```{r,echo=FALSE}
+
+hist(`Sample Far From Coast`,ylab = "Count of Asset X", xlab = "Corrosion Rate, n = " %c% length(s4) %c% ", mean = " %c% mean(s4) %c% ", sd = " %c% sd(s4) )
+
+
+```
+
+## T-Test For 300M From Coast
+
+Invoke the function again
+
+```{r}
+
+t.test(s3,s4)
+
+```
+
+## Results
+
+> - Wow! A p-value of 0.0001098 means there is a 0.01% chance that the difference in corrosion rates is due to random chance.
+
+> - I.e We can now claim we have STRONG EVIDENCE that assets within 300M of the coast corrode faster than other assets of the same type. 
+
+## Final Note
+
+BEWARE: P-Values can be manipulated by using small sample sizes.
+
