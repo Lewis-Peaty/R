@@ -1,0 +1,38 @@
+---
+title: "Untitled"
+author: "Lewis Peaty"
+date: "17 May 2016"
+output: html_document
+---
+
+# Question 3 (30 marks)
+
+> An experiment on atomic absorption spectrometry involved measuring absorbance units as a function of the amount of copper in a dilute acid solution. Five levels of copper were used in the study with four replications of the zero level and two replication of each of the other four levels. The data in micrograms copper/millilitre of solution are given in the table.
+
+Copper (mg/ml)
+0.00 0.05 0.10 0.20 0.50
+0.045 0.084 0.115 0.183 0.395
+0.047 0.087 0.116 0.191 0.399
+0.051
+0.054
+
+|21|20|20|20|
+|--|--|--|--|
+|20|21|20|20|
+|20|20|21|20|
+|20|20|20|21|
+
+## (a) Perform a one-way analysis of variance on these data treating the explanatory variable as qualitative (ie categorical). State appropriate conclusions.
+
+## (b) Calculate the pooled within groups standard deviation.
+
+## (c) Use this standard deviation to give a 95% condence interval for the treatment mean at the zero level of copper.
+
+## (d) Analyse the data using a regression approach, this time treating the explanatory variable as quantitative. Include a plot of the response variable against the explanatory variable.
+
+## (e) Estimate the common error standard deviation from this analysis.
+
+##(f) Use this estimate to give a 95% condence interval for the treatment mean at the zero level of copper. 
+
+## (g) Comment on the difference between the two approaches used to analyse these data.
+## (h)  Each of the dilute acid solutions was prepared individually by one technician. To prevent any systematic error from preparation of the first to the twelfth solution, she prepared them in random order. The order of preparation (columnwise) was 7, 5, 10, 11, 4, 9, 8, 1, 12, 6, 2, 3. Using the residuals from the rst analysis and a graphical method only, assess whether there is evidence of a systematic effect due to order of preparation.
