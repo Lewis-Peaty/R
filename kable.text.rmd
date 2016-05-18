@@ -1,0 +1,20 @@
+---
+title: "Test Markdown"
+author: "Lewis Peaty"
+date: "18 May 2016"
+output: html_document
+---
+
+And now some data presented in a table!
+
+```{r,echo=FALSE,kable}
+
+library(xtable)
+library(knitr)
+library(reshape)
+tab <- xtable(matrix(runif(n = 20),byrow = TRUE, nrow=4))
+kable(tab)
+s <- summary(aov(value~variable,melt(tab)))
+kable(s[1][[1]])
+
+```
